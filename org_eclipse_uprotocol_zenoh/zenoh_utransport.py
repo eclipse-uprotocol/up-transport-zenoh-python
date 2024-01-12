@@ -141,7 +141,7 @@ class Zenoh(UTransport, RpcClient):
             def queryable_callback(query):
                 print(f">> [Queryable ] Received Query '{query.selector}'" + (
                     f" with value: {query.value.payload}" if query.value is not None else ""))
-                serialized_bytes = Base64ProtobufSerializer.serialize(query.value.payload.decode('utf-8'))
+                serialized_bytes = Base64ProtobufSerializer().serialize(query.value.payload.decode('utf-8'))
                 ce = CloudEventSerializers.JSON.serializer().deserialize(serialized_bytes)
                 data = ce.get_data()
                 hint = UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF
@@ -164,7 +164,7 @@ class Zenoh(UTransport, RpcClient):
 
             def zenoh_subscribe_callback(sample) -> None:
                 print("Callback called...")
-                serialized_bytes = Base64ProtobufSerializer.serialize(sample.payload.decode('utf-8'))
+                serialized_bytes = Base64ProtobufSerializer().serialize(sample.payload.decode('utf-8'))
                 ce = CloudEventSerializers.JSON.serializer().deserialize(serialized_bytes)
                 data = ce.get_data()
                 upayload = UPayload(value=data, format=UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF)
@@ -255,7 +255,7 @@ class ZenohUtils:
             ce = CloudEventFactory.response(applicationuri_for_rpc, methoduri, req_id, any_message, ce_attributes)
 
         serialized_bytes = CloudEventSerializers.JSON.serializer().serialize(ce)
-        serialized_str = Base64ProtobufSerializer.deserialize(serialized_bytes)
+        serialized_str = Base64ProtobufSerializer().deserialize(serialized_bytes)
         return ce, serialized_str
 
     @staticmethod
@@ -299,7 +299,7 @@ class ZenohUtils:
         replies = session.get(methoduri, zenoh.Queue(), target=zenoh.QueryTarget.BEST_MATCHING(), value=request)
         for reply in replies.receiver:
             try:
-                serialized_bytes = Base64ProtobufSerializer.serialize(reply.ok.payload.decode('utf-8'))
+                serialized_bytes = Base64ProtobufSerializer().serialize(reply.ok.payload.decode('utf-8'))
                 ce = CloudEventSerializers.JSON.serializer().deserialize(serialized_bytes)
                 data = UCloudEvent.get_payload(ce).SerializeToString()
                 hint = UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF
