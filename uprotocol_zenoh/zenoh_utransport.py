@@ -25,8 +25,6 @@
 # -------------------------------------------------------------------------
 
 
-
-
 import json
 import threading
 import time
@@ -37,25 +35,24 @@ from typing import Tuple
 import zenoh
 from cloudevents.http import CloudEvent
 from google.protobuf import any_pb2
-from org_eclipse_uprotocol.cloudevent.datamodel.ucloudeventattributes import UCloudEventAttributesBuilder
-from org_eclipse_uprotocol.cloudevent.factory.cloudeventfactory import CloudEventFactory
-from org_eclipse_uprotocol.cloudevent.factory.ucloudevent import UCloudEvent
-from org_eclipse_uprotocol.cloudevent.serialize.base64protobufserializer import Base64ProtobufSerializer
-from org_eclipse_uprotocol.cloudevent.serialize.cloudeventserializers import CloudEventSerializers
-from org_eclipse_uprotocol.proto.uri_pb2 import UEntity, UUri
-from org_eclipse_uprotocol.rpc.rpcclient import RpcClient
-from org_eclipse_uprotocol.proto.uattributes_pb2 import UAttributes, UMessageType, UPriority
-from org_eclipse_uprotocol.proto.upayload_pb2 import UPayloadFormat
-from org_eclipse_uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
-from org_eclipse_uprotocol.transport.ulistener import UListener
-from org_eclipse_uprotocol.proto.upayload_pb2 import UPayload
-from org_eclipse_uprotocol.proto.ustatus_pb2 import UStatus, UCode
-from org_eclipse_uprotocol.transport.utransport import UTransport
-from org_eclipse_uprotocol.transport.validate.uattributesvalidator import UAttributesValidator
-from org_eclipse_uprotocol.uri.builder.uresource_builder import UResourceBuilder
-from org_eclipse_uprotocol.uri.serializer.longuriserializer import LongUriSerializer
-from org_eclipse_uprotocol.uri.validator.urivalidator import UriValidator
-from org_eclipse_uprotocol.uuid.serializer.longuuidserializer import LongUuidSerializer
+from uprotocol.cloudevent.datamodel.ucloudeventattributes import UCloudEventAttributesBuilder
+from uprotocol.cloudevent.factory.cloudeventfactory import CloudEventFactory
+from uprotocol.cloudevent.factory.ucloudevent import UCloudEvent
+from uprotocol.cloudevent.serialize.base64protobufserializer import Base64ProtobufSerializer
+from uprotocol.cloudevent.serialize.cloudeventserializers import CloudEventSerializers
+from uprotocol.proto.uattributes_pb2 import UAttributes, UMessageType
+from uprotocol.proto.upayload_pb2 import UPayload
+from uprotocol.proto.upayload_pb2 import UPayloadFormat
+from uprotocol.proto.uri_pb2 import UEntity, UUri
+from uprotocol.proto.ustatus_pb2 import UStatus, UCode
+from uprotocol.rpc.rpcclient import RpcClient
+from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
+from uprotocol.transport.ulistener import UListener
+from uprotocol.transport.utransport import UTransport
+from uprotocol.uri.builder.uresource_builder import UResourceBuilder
+from uprotocol.uri.serializer.longuriserializer import LongUriSerializer
+from uprotocol.uri.validator.urivalidator import UriValidator
+from uprotocol.uuid.serializer.longuuidserializer import LongUuidSerializer
 from zenoh import Sample
 
 # Dictionary to store requests
@@ -66,7 +63,7 @@ register_rpc_querable = {}  # remove element when ue unregister it
 
 
 # Function to add a request
-def add_request(req_id):
+def add_request(req_id: str):
     global m_requests
     future = Future()
     m_requests[req_id] = future
@@ -169,11 +166,8 @@ class Zenoh(UTransport, RpcClient):
                 data = ce.get_data()
                 upayload = UPayload(value=data, format=UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF)
                 priority = UCloudEvent.get_priority(ce)
-                uattributes = UAttributesBuilder(
-                    LongUuidSerializer.instance().deserialize(
-                        UCloudEvent.get_id( ce)),
-                    UCloudEvent.get_message_type(UCloudEvent.get_type( ce)),
-                    priority).build()
+                uattributes = UAttributesBuilder(LongUuidSerializer.instance().deserialize(UCloudEvent.get_id(ce)),
+                    UCloudEvent.get_message_type(UCloudEvent.get_type(ce)), priority).build()
                 listener.on_receive(uri, upayload, uattributes)
 
             conf = ZenohUtils.add_endpoint()
@@ -250,7 +244,7 @@ class ZenohUtils:
             applicationuri_for_rpc = LongUriSerializer().serialize(
                 UUri(authority=uri.authority, entity=uri.entity, resource=UResourceBuilder.for_rpc_response()))
             methoduri = LongUriSerializer().serialize(uri)
-            req_id = LongUuidSerializer.instance().serialize(attributes.id)
+            req_id = LongUuidSerializer.instance().serialize(attributes.reqid)
             # create rpc response cloud event
             ce = CloudEventFactory.response(applicationuri_for_rpc, methoduri, req_id, any_message, ce_attributes)
 
@@ -273,7 +267,6 @@ class ZenohUtils:
         publish data to zenoh_up router
         """
         new_topic = ZenohUtils.replace_special_chars(topic)
-        # new_topic = self.replace_special_chars(topic)
 
         conf = self.add_endpoint()
         session_publish = zenoh.open(conf)
@@ -303,7 +296,7 @@ class ZenohUtils:
                 ce = CloudEventSerializers.JSON.serializer().deserialize(serialized_bytes)
                 data = UCloudEvent.get_payload(ce).SerializeToString()
                 hint = UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF
-                upayload = UPayload(value=data,format= hint)
+                upayload = UPayload(value=data, format=hint)
                 req_id = UCloudEvent.get_request_id(ce)
                 future_result = m_requests[req_id]
                 if not future_result.done():
