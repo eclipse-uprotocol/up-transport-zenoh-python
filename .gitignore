@@ -1,0 +1,10 @@
+.idea/
+**/__pycache__/
+**/build/
+**/dist/
+**/*.egg-info/
+**/.DS_Store
+.vscode
+.coverage
+poetry.lock
+

@@ -1,0 +1,2 @@
+up-python==0.1.2-dev
+eclipse-zenoh==0.11.0rc2
