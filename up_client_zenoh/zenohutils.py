@@ -36,9 +36,6 @@ from zenoh.value import Attachment
 UATTRIBUTE_VERSION: int = 1
 
 
-class ZenohListener:
-    pass
-
 
 class ZenohUtils:
 

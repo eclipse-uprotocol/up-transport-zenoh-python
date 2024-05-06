@@ -46,7 +46,7 @@ from uprotocol.uri.factory.uresource_builder import UResourceBuilder
 from uprotocol.uri.validator.urivalidator import UriValidator
 from zenoh import open as zenoh_open, Subscriber, Session, Encoding, Config, Query, Sample, Value, Queryable
 
-from zenohutils import ZenohUtils
+from up_client_zenoh.zenohutils import ZenohUtils
 
 logger = logging.getLogger(__name__)
 
@@ -180,7 +180,7 @@ class UPClientZenoh(UTransport, RpcClient):
         print(f"SUCCESS:{msg}")
         return UStatus(code=UCode.OK, message=msg)
 
-    def send_response(self, payload: UPayload, attributes: UAttributes) -> None:
+    def send_response(self, payload: UPayload, attributes: UAttributes) -> UStatus:
         # Transform attributes to user attachment in Zenoh
         attachment = ZenohUtils.uattributes_to_attachment(attributes)
         # Find out the corresponding query from dictionary
@@ -321,24 +321,24 @@ class UPClientZenoh(UTransport, RpcClient):
             Validators.PUBLISH.validator().validate(attributes)
             topic = attributes.source
             zenoh_key = ZenohUtils.to_zenoh_key_string(topic)
-            self.send_publish_notification(zenoh_key, payload, attributes)
+            return self.send_publish_notification(zenoh_key, payload, attributes)
         elif msg_type == UMessageType.UMESSAGE_TYPE_NOTIFICATION:
             Validators.NOTIFICATION.validator().validate(attributes)
             topic = attributes.sink
             zenoh_key = ZenohUtils.to_zenoh_key_string(topic)
-            self.send_publish_notification(zenoh_key, payload, attributes)
+            return self.send_publish_notification(zenoh_key, payload, attributes)
 
         elif msg_type == UMessageType.UMESSAGE_TYPE_REQUEST:
             Validators.REQUEST.validator().validate(attributes)
             topic = attributes.sink
             zenoh_key = ZenohUtils.to_zenoh_key_string(topic)
-            self.send_request(zenoh_key, payload, attributes)
+            return self.send_request(zenoh_key, payload, attributes)
 
         elif msg_type == UMessageType.UMESSAGE_TYPE_RESPONSE:
             Validators.RESPONSE.validator().validate(attributes)
             topic = attributes.source
             zenoh_key = ZenohUtils.to_zenoh_key_string(topic)
-            self.send_response(zenoh_key, payload, attributes)
+            return self.send_response(zenoh_key, payload, attributes)
 
         else:
             return UStatus(code=UCode.INVALID_ARGUMENT, message="Wrong Message type in UAttributes")
@@ -348,20 +348,28 @@ class UPClientZenoh(UTransport, RpcClient):
             # This is special UUri which means we need to register for all of Publish, Request, and Response
             # RPC response
             # Register for all of Publish, Notification, Request, and Response
-            self.register_response_listener(topic, listener)
-            self.register_request_listener(topic, listener)
-            self.register_publish_notification_listener(topic, listener)
-
+            response_status = self.register_response_listener(topic, listener)
+            request_status = self.register_request_listener(topic, listener)
+            publish_status = self.register_publish_notification_listener(topic, listener)
+            if all(status.code == UCode.OK for status in [response_status, request_status, publish_status]):
+                return UStatus(code=UCode.OK, message="Successfully register listener with Zenoh")
+            else:
+                return UStatus(code=UCode.INTERNAL, message="Unsuccessful registration")
 
         else:
             # Validate topic
             UriValidator.validate(topic)
+            status = None
             if UriValidator.is_rpc_response(topic):
-                self.register_response_listener(topic, listener)
+                status = self.register_response_listener(topic, listener)
             elif UriValidator.is_rpc_method(topic):
-                self.register_request_listener(topic, listener)
+                status = self.register_request_listener(topic, listener)
             else:
-                self.register_publish_notification_listener(topic, listener)
+                status = self.register_publish_notification_listener(topic, listener)
+            if status.code == UCode.OK:
+                return UStatus(code=UCode.OK, message="Successfully register listener with Zenoh")
+            else:
+                return UStatus(code=UCode.INTERNAL, message="Unsuccessful registration")
 
     def unregister_listener(self, topic: UUri, listener: UListener) -> None:
         remove_pub_listener = False
