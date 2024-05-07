@@ -137,7 +137,7 @@ class UPClientZenoh(UTransport, RpcClient):
             print(msg)
             return UStatus(code=UCode.INVALID_ARGUMENT, message=msg)
 
-        resp_callback = self.rpc_callback_map.get(attributes.source.to_string())
+        resp_callback = self.rpc_callback_map.get(attributes.source.SerializeToString())
         if resp_callback is None:
             msg = "Unable to get callback"
             print(msg)
@@ -185,7 +185,7 @@ class UPClientZenoh(UTransport, RpcClient):
         attachment = ZenohUtils.uattributes_to_attachment(attributes)
         # Find out the corresponding query from dictionary
         reqid = attributes.reqid
-        query = self.query_map.pop(reqid.to_string(), None)
+        query = self.query_map.pop(reqid.SerializeToString(), None)
         if not query:
             msg = "Query doesn't exist"
             print(msg)
@@ -336,9 +336,7 @@ class UPClientZenoh(UTransport, RpcClient):
 
         elif msg_type == UMessageType.UMESSAGE_TYPE_RESPONSE:
             Validators.RESPONSE.validator().validate(attributes)
-            topic = attributes.source
-            zenoh_key = ZenohUtils.to_zenoh_key_string(topic)
-            return self.send_response(zenoh_key, payload, attributes)
+            return self.send_response( payload, attributes)
 
         else:
             return UStatus(code=UCode.INVALID_ARGUMENT, message="Wrong Message type in UAttributes")
@@ -448,7 +446,7 @@ class UPClientZenoh(UTransport, RpcClient):
 
             for reply in get_builder.receiver:
 
-                if reply.isok:
+                if reply.is_ok:
                     encoding = ZenohUtils.to_upayload_format(reply.ok.encoding)
                     if not encoding:
                         msg = "Error while parsing Zenoh encoding"

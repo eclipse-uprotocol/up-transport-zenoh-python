@@ -36,7 +36,6 @@ from zenoh.value import Attachment
 UATTRIBUTE_VERSION: int = 1
 
 
-
 class ZenohUtils:
 
     @staticmethod
@@ -104,29 +103,27 @@ class ZenohUtils:
 
     @staticmethod
     def uattributes_to_attachment(uattributes: UAttributes):
-        # UATTRIBUTE_VERSION.to_bytes(1, byteorder='little') #Todo first param , check with luca, dict cant have two same keys
-        attributes_dict = {"": uattributes.SerializeToString()}
-        return attributes_dict
+        attachment = [("", UATTRIBUTE_VERSION.to_bytes(1, byteorder='little')), ("", uattributes.SerializeToString())]
+        return attachment
 
     @staticmethod
     def attachment_to_uattributes(attachment: Attachment) -> UAttributes:
         try:
-            # version = None
-            # version_found = False
+            version = None
+            version_found = False
             uattributes = None
-            version = UATTRIBUTE_VERSION  # Todo remove once attachment builder class is available
-            version_found = True
+
             items = attachment.items()
-            for key, value in items.items():
-                if key == b"":
-                    # if not version_found:
-                    #     version = value
-                    #     version_found = True
-                    # else:
-                    # Process UAttributes data
-                    uattributes = UAttributes()
-                    uattributes.ParseFromString(value)
-                    break
+            for pair in items:
+                if pair[0] == b"":
+                    if not version_found:
+                        version = pair[1]
+                        version_found = True
+                    else:
+                        # Process UAttributes data
+                        uattributes = UAttributes()
+                        uattributes.ParseFromString(pair[1])
+                        break
 
             if version is None:
                 msg = f"UAttributes version is empty (should be {UATTRIBUTE_VERSION})"
@@ -138,7 +135,7 @@ class ZenohUtils:
                 print(msg)
                 raise UStatus(code=UCode.INVALID_ARGUMENT, message=msg)
 
-            if version != UATTRIBUTE_VERSION:
+            if version != UATTRIBUTE_VERSION.to_bytes(1, byteorder='little'):
                 msg = f"UAttributes version is {version} (should be {UATTRIBUTE_VERSION})"
                 print(msg)
                 raise UStatus(code=UCode.INVALID_ARGUMENT, message=msg)
