@@ -95,9 +95,8 @@ class ZenohUtils:
     @staticmethod
     def to_upayload_format(encoding: Encoding) -> UPayloadFormat:
         try:
-            # value = int(encoding.suffix())  # Todo need to check with Luca
-            # return UPayloadFormat(value)
-            return UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY
+            value = int(encoding.suffix)
+            return value if UPayloadFormat.Name(value) else None
         except (ValueError, AttributeError):
             return None
 

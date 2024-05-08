@@ -106,8 +106,10 @@ class UPClientZenoh(UTransport, RpcClient):
             print(f"Data: {buf}")
             print(f"Priority: {priority}")
             print(f"Attachment: {attachment}")
+            encoding = Encoding.APP_CUSTOM().with_suffix(str(payload.format))
 
-            put_builder = self.session.put(keyexpr=zenoh_key, value=buf, attachment=attachment, priority=priority)
+            put_builder = self.session.put(keyexpr=zenoh_key, encoding=encoding, value=buf, attachment=attachment,
+                                           priority=priority)
 
             msg = "Successfully sent data to Zenoh"
             print(f"SUCCESS:{msg}")
@@ -173,7 +175,9 @@ class UPClientZenoh(UTransport, RpcClient):
                 return UStatus(code=UCode.INTERNAL, message=msg)
 
         # Send query
-        value = Value(payload.value, encoding=Encoding.APP_CUSTOM())
+        ttl = attributes.ttl if attributes.ttl is not None else 1000
+
+        value = Value(payload.value, encoding=Encoding.APP_CUSTOM().with_suffix(str(payload.format)))
         self.session.get(zenoh_key, lambda reply: zenoh_callback(reply), target=zenoh.QueryTarget.BEST_MATCHING(),
                          value=value)
         msg = "Successfully sent rpc request to Zenoh"
@@ -190,7 +194,7 @@ class UPClientZenoh(UTransport, RpcClient):
             msg = "Query doesn't exist"
             print(msg)
             return UStatus(code=UCode.INTERNAL, message=msg)  # Send back the query
-        value = Value(payload.value, Encoding.APP_CUSTOM())
+        value = Value(payload.value, Encoding.APP_CUSTOM().with_suffix(str(payload.format)))
         reply = Sample(query.key_expr, value, attachment=attachment)
 
         try:
@@ -259,8 +263,6 @@ class UPClientZenoh(UTransport, RpcClient):
 
         def callback(query: Query) -> None:
             nonlocal self, listener, topic
-            print(query.selector)
-            print(query.decode_parameters())
             attachment = query.attachment
             if not attachment:
                 msg = "Unable to get attachment"
@@ -283,7 +285,7 @@ class UPClientZenoh(UTransport, RpcClient):
                     print(msg)
                     return UStatus(code=UCode.INTERNAL, message=msg)
 
-                u_payload = UPayload(format=UPayloadFormat.UPAYLOAD_FORMAT_PROTOBUF_WRAPPED_IN_ANY, value=value.payload)
+                u_payload = UPayload(format=encoding, value=value.payload)
             else:
                 u_payload = UPayload(format=UPayloadFormat.UPAYLOAD_FORMAT_UNSPECIFIED)
 
@@ -336,7 +338,7 @@ class UPClientZenoh(UTransport, RpcClient):
 
         elif msg_type == UMessageType.UMESSAGE_TYPE_RESPONSE:
             Validators.RESPONSE.validator().validate(attributes)
-            return self.send_response( payload, attributes)
+            return self.send_response(payload, attributes)
 
         else:
             return UStatus(code=UCode.INVALID_ARGUMENT, message="Wrong Message type in UAttributes")
@@ -426,7 +428,7 @@ class UPClientZenoh(UTransport, RpcClient):
             zenoh_key = zenoh_key_result
 
             # Create UAttributes and put into Zenoh user attachment
-            uattributes = UAttributesBuilder.request(topic, self.get_response_uuri(), UPriority.UPRIORITY_CS4,
+            uattributes = UAttributesBuilder.request(self.get_response_uuri(), topic, UPriority.UPRIORITY_CS4,
                                                      options.ttl).build()
 
             attachment = ZenohUtils.uattributes_to_attachment(uattributes)
@@ -438,7 +440,7 @@ class UPClientZenoh(UTransport, RpcClient):
                 raise UStatus(code=UCode.INVALID_ARGUMENT, message=msg)
 
             buf = payload.value
-            value = Value(buf, encoding=Encoding.APP_CUSTOM())
+            value = Value(buf, encoding=Encoding.APP_CUSTOM().with_suffix(str(payload.format)))
 
             # Send the query
             get_builder = self.session.get(zenoh_key, zenoh.Queue(), target=zenoh.QueryTarget.BEST_MATCHING(), value=value,
