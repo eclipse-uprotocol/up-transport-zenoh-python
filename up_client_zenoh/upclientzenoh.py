@@ -170,11 +170,11 @@ class UPClientZenoh(UTransport, RpcClient):
                 return UStatus(code=UCode.INTERNAL, message=msg)
 
         # Send query
-        ttl = attributes.ttl if attributes.ttl is not None else 1000
+        ttl = attributes.ttl / 1000 if attributes.ttl is not None else 1000
 
         value = Value(payload.value, encoding=Encoding.APP_CUSTOM().with_suffix(str(payload.format)))
         self.session.get(zenoh_key, lambda reply: zenoh_callback(reply), target=zenoh.QueryTarget.BEST_MATCHING(),
-                         value=value)
+                         value=value, timeout=ttl)
         msg = "Successfully sent rpc request to Zenoh"
         print(f"SUCCESS:{msg}")
         return UStatus(code=UCode.OK, message=msg)
@@ -272,8 +272,6 @@ class UPClientZenoh(UTransport, RpcClient):
 
             value = query.value
             if value:
-                # todo encoding logic---- not present in eclipse-zenoh pypi where as it is available in zenoh- rust
-                #  release
                 encoding = ZenohUtils.to_upayload_format(value.encoding)
                 if not encoding:
                     msg = "Unable to get payload encoding"
@@ -439,7 +437,7 @@ class UPClientZenoh(UTransport, RpcClient):
 
             # Send the query
             get_builder = self.session.get(zenoh_key, zenoh.Queue(), target=zenoh.QueryTarget.BEST_MATCHING(), value=value,
-                                           attachment=attachment)
+                                           attachment=attachment, timeout=options.ttl / 1000)
 
             for reply in get_builder.receiver:
 
