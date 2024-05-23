@@ -19,6 +19,7 @@ SPDX-FileType: SOURCE
 SPDX-License-Identifier: Apache-2.0
 """
 
+import logging
 from typing import Union
 
 from uprotocol.proto.uattributes_pb2 import UPriority, UAttributes
@@ -29,6 +30,9 @@ from zenoh import Priority, Encoding
 from zenoh.value import Attachment
 
 UATTRIBUTE_VERSION: int = 1
+
+# Configure the logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 class ZenohUtils:
@@ -42,11 +46,11 @@ class ZenohUtils:
                 return "".join(f"{c:02x}" for c in authority_bytes)
             except Exception as e:
                 msg = f"Unable to transform UAuthority into micro form: {e}"
-                print(msg)
+                logging.debug(msg)
                 return UStatus(code=UCode.INVALID_ARGUMENT, message=msg)
         else:
             msg = "UAuthority is empty"
-            print(msg)
+            logging.debug(msg)
             return UStatus(code=UCode.INVALID_ARGUMENT, message=msg)
 
     @staticmethod
@@ -59,7 +63,7 @@ class ZenohUtils:
                 return f"upr/{authority}/**"
             except Exception as e:
                 msg = f"Failed to generate Zenoh key: {e}"
-                print(msg)
+                logging.debug(msg)
                 return UStatus(code=UCode.INVALID_ARGUMENT, message=msg)
         else:
             try:
@@ -74,7 +78,7 @@ class ZenohUtils:
                 return micro_zenoh_key
             except Exception as e:
                 msg = f"Failed to generate Zenoh key: {e}"
-                print(msg)
+                logging.debug(msg)
                 return UStatus(code=UCode.INVALID_ARGUMENT, message=msg)
 
     @staticmethod
@@ -109,38 +113,37 @@ class ZenohUtils:
 
             items = attachment.items()
             for pair in items:
-                if pair[0] == b"":
-                    if not version_found:
-                        version = pair[1]
-                        version_found = True
-                    else:
-                        # Process UAttributes data
-                        uattributes = UAttributes()
-                        uattributes.ParseFromString(pair[1])
-                        break
+                if not version_found:
+                    version = pair[1]
+                    version_found = True
+                else:
+                    # Process UAttributes data
+                    uattributes = UAttributes()
+                    uattributes.ParseFromString(pair[1])
+                    break
 
             if version is None:
                 msg = f"UAttributes version is empty (should be {UATTRIBUTE_VERSION})"
-                print(msg)
+                logging.debug(msg)
                 raise UStatus(code=UCode.INVALID_ARGUMENT, message=msg)
 
             if not version_found:
                 msg = f"UAttributes version is missing in the attachment"
-                print(msg)
+                logging.debug(msg)
                 raise UStatus(code=UCode.INVALID_ARGUMENT, message=msg)
 
             if version != UATTRIBUTE_VERSION.to_bytes(1, byteorder='little'):
                 msg = f"UAttributes version is {version} (should be {UATTRIBUTE_VERSION})"
-                print(msg)
+                logging.debug(msg)
                 raise UStatus(code=UCode.INVALID_ARGUMENT, message=msg)
 
             if uattributes is None:
                 msg = "Unable to get the UAttributes"
-                print(msg)
+                logging.debug(msg)
                 raise UStatus(code=UCode.INVALID_ARGUMENT, message=msg)
 
             return uattributes
         except Exception as e:
             msg = f"Failed to convert Attachment to UAttributes: {e}"
-            print(msg)
+            logging.debug(msg)
             raise UStatus(code=UCode.INVALID_ARGUMENT, message=msg)
