@@ -39,12 +39,10 @@ def send_rpc_request_to_zenoh():
     if result and isinstance(result.payload.value, bytes):
         data = list(result.payload.value)
         value = ''.join(chr(c) for c in data)
-        common_uuri.logging.debug(f"Receive {value}")
+        common_uuri.logging.debug(f"Receive rpc response {value}")
     else:
         common_uuri.logging.debug("Failed to get result from invoke_method.")
 
 
 if __name__ == '__main__':
     send_rpc_request_to_zenoh()
-    while True:
-        time.sleep(1)
