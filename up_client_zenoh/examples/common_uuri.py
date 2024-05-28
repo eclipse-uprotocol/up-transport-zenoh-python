@@ -11,11 +11,12 @@ terms of the Apache License Version 2.0 which is available at
 
 SPDX-License-Identifier: Apache-2.0
 """
+
 import json
 import logging
-import zenoh
 from enum import Enum
-from typing import Optional
+
+import zenoh
 from uprotocol.proto.uri_pb2 import UAuthority
 from uprotocol.proto.uri_pb2 import UEntity
 from uprotocol.proto.uri_pb2 import UResource
@@ -52,6 +53,7 @@ def rpc_resource() -> UResource:
 
 
 def get_zenoh_config():
+    # start your zenoh router and provide router ip and port
     zenoh_ip = "192.168.29.79"  # zenoh router ip
     zenoh_port = 9090  # zenoh router port
     conf = zenoh.Config()
@@ -61,3 +63,14 @@ def get_zenoh_config():
         conf.insert_json5(zenoh.config.MODE_KEY, json.dumps("client"))
         conf.insert_json5(zenoh.config.CONNECT_KEY, json.dumps(endpoint))
     return conf
+
+
+# Initialize Zenoh with default configuration
+def get_zenoh_default_config():
+    # Create a Zenoh configuration object with default settings
+    config = zenoh.Config()
+
+    # # Set the mode to Peer (or Router, Client depending on your use case)
+    # config = "peer"
+
+    return config

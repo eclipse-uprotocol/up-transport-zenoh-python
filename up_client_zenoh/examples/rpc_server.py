@@ -24,10 +24,11 @@ from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.transport.ulistener import UListener
 
 from up_client_zenoh.examples import common_uuri
-from up_client_zenoh.examples.common_uuri import get_zenoh_config, authority, entity, ExampleType, rpc_resource
+from up_client_zenoh.examples.common_uuri import authority, entity, ExampleType, rpc_resource, \
+    get_zenoh_default_config
 from up_client_zenoh.upclientzenoh import UPClientZenoh
 
-rpc_server = UPClientZenoh(get_zenoh_config(), authority(), entity(ExampleType.RPC_SERVER))
+rpc_server = UPClientZenoh(get_zenoh_default_config(), authority(), entity(ExampleType.RPC_SERVER))
 
 
 class RPCRequestListener(UListener):

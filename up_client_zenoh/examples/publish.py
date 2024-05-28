@@ -1,3 +1,17 @@
+"""
+SPDX-FileCopyrightText: 2024 Contributors to the Eclipse Foundation
+
+See the NOTICE file(s) distributed with this work for additional
+information regarding copyright ownership.
+
+This program and the accompanying materials are made available under the
+terms of the Apache License Version 2.0 which is available at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+SPDX-License-Identifier: Apache-2.0
+"""
+
 import time
 
 from uprotocol.proto.uattributes_pb2 import UPriority
@@ -7,10 +21,11 @@ from uprotocol.proto.uri_pb2 import UUri
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 
 from up_client_zenoh.examples import common_uuri
-from up_client_zenoh.examples.common_uuri import get_zenoh_config, authority, entity, ExampleType, pub_resource
+from up_client_zenoh.examples.common_uuri import authority, entity, ExampleType, pub_resource, \
+    get_zenoh_default_config
 from up_client_zenoh.upclientzenoh import UPClientZenoh
 
-publisher = UPClientZenoh(get_zenoh_config(), authority(), entity(ExampleType.PUBLISHER))
+publisher = UPClientZenoh(get_zenoh_default_config(), authority(), entity(ExampleType.PUBLISHER))
 
 
 def publishtoZenoh():

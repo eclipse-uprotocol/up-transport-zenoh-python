@@ -20,7 +20,8 @@ from uprotocol.proto.ustatus_pb2 import UStatus
 from uprotocol.transport.ulistener import UListener
 
 from up_client_zenoh.examples import common_uuri
-from up_client_zenoh.examples.common_uuri import get_zenoh_config, authority, entity, ExampleType, pub_resource
+from up_client_zenoh.examples.common_uuri import authority, entity, ExampleType, pub_resource, \
+    get_zenoh_default_config
 from up_client_zenoh.upclientzenoh import UPClientZenoh
 
 
@@ -33,7 +34,7 @@ class MyListener(UListener):
         return UStatus(message="Received event")
 
 
-client = UPClientZenoh(get_zenoh_config(), authority(), entity(ExampleType.SUBSCRIBER))
+client = UPClientZenoh(get_zenoh_default_config(), authority(), entity(ExampleType.SUBSCRIBER))
 
 
 def subscribeToZenoh():

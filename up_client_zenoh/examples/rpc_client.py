@@ -12,17 +12,15 @@ terms of the Apache License Version 2.0 which is available at
 SPDX-License-Identifier: Apache-2.0
 """
 
-import time
-
 from uprotocol.proto.uattributes_pb2 import CallOptions
 from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
 from uprotocol.proto.uri_pb2 import UUri
 
 from up_client_zenoh.examples import common_uuri
-from up_client_zenoh.examples.common_uuri import get_zenoh_config, authority, entity, ExampleType, rpc_resource
+from up_client_zenoh.examples.common_uuri import authority, entity, ExampleType, rpc_resource, get_zenoh_default_config
 from up_client_zenoh.upclientzenoh import UPClientZenoh
 
-rpc_client = UPClientZenoh(get_zenoh_config(), authority(), entity(ExampleType.RPC_CLIENT))
+rpc_client = UPClientZenoh(get_zenoh_default_config(), authority(), entity(ExampleType.RPC_CLIENT))
 
 
 def send_rpc_request_to_zenoh():
