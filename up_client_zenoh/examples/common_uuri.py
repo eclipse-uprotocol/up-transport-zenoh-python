@@ -17,9 +17,7 @@ import logging
 from enum import Enum
 
 import zenoh
-from uprotocol.proto.uri_pb2 import UAuthority
-from uprotocol.proto.uri_pb2 import UEntity
-from uprotocol.proto.uri_pb2 import UResource
+from uprotocol.proto.uri_pb2 import UAuthority, UEntity, UResource
 from uprotocol.uri.factory.uresource_builder import UResourceBuilder
 
 # Configure the logging
@@ -38,8 +36,12 @@ def authority() -> UAuthority:
 
 
 def entity(example_type: ExampleType) -> UEntity:
-    mapping = {ExampleType.PUBLISHER : ("publisher", 1), ExampleType.SUBSCRIBER: ("subscriber", 2),
-               ExampleType.RPC_SERVER: ("rpc_server", 3), ExampleType.RPC_CLIENT: ("rpc_client", 4)}
+    mapping = {
+        ExampleType.PUBLISHER: ("publisher", 1),
+        ExampleType.SUBSCRIBER: ("subscriber", 2),
+        ExampleType.RPC_SERVER: ("rpc_server", 3),
+        ExampleType.RPC_CLIENT: ("rpc_client", 4),
+    }
     name, id = mapping[example_type]
     return UEntity(name=name, id=1, version_major=id)
 
@@ -69,8 +71,5 @@ def get_zenoh_config():
 def get_zenoh_default_config():
     # Create a Zenoh configuration object with default settings
     config = zenoh.Config()
-
-    # # Set the mode to Peer (or Router, Client depending on your use case)
-    # config = "peer"
 
     return config

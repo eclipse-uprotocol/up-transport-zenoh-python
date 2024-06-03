@@ -22,11 +22,11 @@ SPDX-License-Identifier: Apache-2.0
 import logging
 from typing import Union
 
-from uprotocol.proto.uattributes_pb2 import UPriority, UAttributes
+from uprotocol.proto.uattributes_pb2 import UAttributes, UPriority
 from uprotocol.proto.upayload_pb2 import UPayloadFormat
 from uprotocol.proto.uri_pb2 import UUri
-from uprotocol.proto.ustatus_pb2 import UStatus, UCode
-from zenoh import Priority, Encoding
+from uprotocol.proto.ustatus_pb2 import UCode, UStatus
+from zenoh import Encoding, Priority
 from zenoh.value import Attachment
 
 UATTRIBUTE_VERSION: int = 1
@@ -36,7 +36,6 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 
 
 class ZenohUtils:
-
     @staticmethod
     def get_uauth_from_uuri(uri: UUri) -> Union[str, UStatus]:
         if uri.authority:
@@ -83,12 +82,16 @@ class ZenohUtils:
 
     @staticmethod
     def map_zenoh_priority(upriority: UPriority) -> Priority:
-        mapping = {UPriority.UPRIORITY_CS0        : Priority.BACKGROUND(), UPriority.UPRIORITY_CS1: Priority.DATA_LOW(),
-                   UPriority.UPRIORITY_CS2        : Priority.DATA(), UPriority.UPRIORITY_CS3: Priority.DATA_HIGH(),
-                   UPriority.UPRIORITY_CS4        : Priority.INTERACTIVE_LOW(),
-                   UPriority.UPRIORITY_CS5        : Priority.INTERACTIVE_HIGH(),
-                   UPriority.UPRIORITY_CS6        : Priority.REAL_TIME(),
-                   UPriority.UPRIORITY_UNSPECIFIED: Priority.DATA_LOW()}
+        mapping = {
+            UPriority.UPRIORITY_CS0: Priority.BACKGROUND(),
+            UPriority.UPRIORITY_CS1: Priority.DATA_LOW(),
+            UPriority.UPRIORITY_CS2: Priority.DATA(),
+            UPriority.UPRIORITY_CS3: Priority.DATA_HIGH(),
+            UPriority.UPRIORITY_CS4: Priority.INTERACTIVE_LOW(),
+            UPriority.UPRIORITY_CS5: Priority.INTERACTIVE_HIGH(),
+            UPriority.UPRIORITY_CS6: Priority.REAL_TIME(),
+            UPriority.UPRIORITY_UNSPECIFIED: Priority.DATA_LOW(),
+        }
         return mapping[upriority]
 
     @staticmethod
@@ -128,7 +131,7 @@ class ZenohUtils:
                 raise UStatus(code=UCode.INVALID_ARGUMENT, message=msg)
 
             if not version_found:
-                msg = f"UAttributes version is missing in the attachment"
+                msg = "UAttributes version is missing in the attachment"
                 logging.debug(msg)
                 raise UStatus(code=UCode.INVALID_ARGUMENT, message=msg)
 

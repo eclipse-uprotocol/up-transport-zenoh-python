@@ -16,23 +16,20 @@ import time
 from datetime import datetime
 
 from uprotocol.proto.umessage_pb2 import UMessage
-from uprotocol.proto.upayload_pb2 import UPayload
-from uprotocol.proto.upayload_pb2 import UPayloadFormat
+from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
 from uprotocol.proto.uri_pb2 import UUri
 from uprotocol.proto.ustatus_pb2 import UStatus
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.transport.ulistener import UListener
 
 from up_client_zenoh.examples import common_uuri
-from up_client_zenoh.examples.common_uuri import authority, entity, ExampleType, rpc_resource, \
-    get_zenoh_default_config
+from up_client_zenoh.examples.common_uuri import ExampleType, authority, entity, get_zenoh_default_config, rpc_resource
 from up_client_zenoh.upclientzenoh import UPClientZenoh
 
 rpc_server = UPClientZenoh(get_zenoh_default_config(), authority(), entity(ExampleType.RPC_SERVER))
 
 
 class RPCRequestListener(UListener):
-
     def on_receive(self, msg: UMessage) -> UStatus:
         attributes = msg.attributes
         payload = msg.payload

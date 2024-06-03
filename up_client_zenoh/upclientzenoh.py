@@ -25,13 +25,11 @@ from threading import Lock
 from typing import Dict, Tuple
 
 import zenoh
-from uprotocol.proto.uattributes_pb2 import CallOptions
-from uprotocol.proto.uattributes_pb2 import UAttributes, UMessageType
-from uprotocol.proto.uattributes_pb2 import UPriority
+from uprotocol.proto.uattributes_pb2 import CallOptions, UAttributes, UMessageType, UPriority
 from uprotocol.proto.umessage_pb2 import UMessage
-from uprotocol.proto.upayload_pb2 import UPayloadFormat, UPayload
-from uprotocol.proto.uri_pb2 import UUri, UAuthority, UEntity
-from uprotocol.proto.ustatus_pb2 import UStatus, UCode
+from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
+from uprotocol.proto.uri_pb2 import UAuthority, UEntity, UUri
+from uprotocol.proto.ustatus_pb2 import UCode, UStatus
 from uprotocol.rpc.rpcclient import RpcClient
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 from uprotocol.transport.ulistener import UListener
@@ -39,7 +37,8 @@ from uprotocol.transport.utransport import UTransport
 from uprotocol.transport.validate.uattributesvalidator import Validators
 from uprotocol.uri.factory.uresource_builder import UResourceBuilder
 from uprotocol.uri.validator.urivalidator import UriValidator
-from zenoh import open as zenoh_open, Subscriber, Encoding, Config, Query, Sample, Value, Queryable
+from zenoh import Config, Encoding, Query, Queryable, Sample, Subscriber, Value
+from zenoh import open as zenoh_open
 
 from up_client_zenoh.zenohutils import ZenohUtils
 
@@ -48,7 +47,6 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 
 
 class UPClientZenoh(UTransport, RpcClient):
-
     def __init__(self, config: Config, uauthority: UAuthority, uentity: UEntity):
         self.session = zenoh_open(config)
         self.subscriber_map: Dict[Tuple[str, UListener], Subscriber] = {}
@@ -97,8 +95,7 @@ class UPClientZenoh(UTransport, RpcClient):
             logging.debug(f"Attachment: {attachment}")
             encoding = Encoding.APP_CUSTOM().with_suffix(str(payload.format))
 
-            put_builder = self.session.put(keyexpr=zenoh_key, encoding=encoding, value=buf, attachment=attachment,
-                                           priority=priority)
+            self.session.put(keyexpr=zenoh_key, encoding=encoding, value=buf, attachment=attachment, priority=priority)
 
             msg = "Successfully sent data to Zenoh"
             logging.debug(f"SUCCESS:{msg}")
@@ -156,7 +153,9 @@ class UPClientZenoh(UTransport, RpcClient):
                     logging.debug(msg)
                     return UStatus(code=UCode.INTERNAL, message=msg)
                 # Create UMessage
-                msg = UMessage(attributes=u_attribute, payload=UPayload(length=0, format=encoding, value=sample.payload))
+                msg = UMessage(
+                    attributes=u_attribute, payload=UPayload(length=0, format=encoding, value=sample.payload)
+                )
                 resp_callback.on_receive(msg)
             else:
                 msg = f"Error while parsing Zenoh reply: {reply.error}"
@@ -167,8 +166,13 @@ class UPClientZenoh(UTransport, RpcClient):
         ttl = attributes.ttl / 1000 if attributes.ttl is not None else 1000
 
         value = Value(payload.value, encoding=Encoding.APP_CUSTOM().with_suffix(str(payload.format)))
-        self.session.get(zenoh_key, lambda reply: zenoh_callback(reply), target=zenoh.QueryTarget.BEST_MATCHING(),
-                         value=value, timeout=ttl)
+        self.session.get(
+            zenoh_key,
+            lambda reply: zenoh_callback(reply),
+            target=zenoh.QueryTarget.BEST_MATCHING(),
+            value=value,
+            timeout=ttl,
+        )
         msg = "Successfully sent rpc request to Zenoh"
         logging.debug(f"SUCCESS:{msg}")
         return UStatus(code=UCode.OK, message=msg)
@@ -229,7 +233,6 @@ class UPClientZenoh(UTransport, RpcClient):
 
         # Create Zenoh subscriber
         try:
-
             subscriber = self.session.declare_subscriber(zenoh_key, callback)
             if subscriber:
                 with self.subscriber_lock:
@@ -239,7 +242,7 @@ class UPClientZenoh(UTransport, RpcClient):
                 msg = "Unable to register callback with Zenoh"
                 logging.debug(msg)
                 return UStatus(code=UCode.INTERNAL, message=msg)
-        except Exception as e:
+        except Exception:
             msg = "Unable to register callback with Zenoh"
             logging.debug(msg)
             return UStatus(code=UCode.INTERNAL, message=msg)
@@ -285,7 +288,7 @@ class UPClientZenoh(UTransport, RpcClient):
             queryable = self.session.declare_queryable(zenoh_key, callback)
             with self.queryable_lock:
                 self.queryable_map[(topic.SerializeToString(), listener)] = queryable
-        except Exception as e:
+        except Exception:
             msg = "Unable to register callback with Zenoh"
             logging.debug(msg)
             return UStatus(code=UCode.INTERNAL, message=msg)
@@ -393,7 +396,12 @@ class UPClientZenoh(UTransport, RpcClient):
             if self.queryable_map.pop((topic.SerializeToString(), listener), None) is None:
                 raise ValueError("RPC request listener doesn't exist")
 
-    def invoke_method(self, topic: UUri, payload: UPayload, options: CallOptions, ) -> Future:
+    def invoke_method(
+        self,
+        topic: UUri,
+        payload: UPayload,
+        options: CallOptions,
+    ) -> Future:
         try:
             # Validate UUri
             if not UriValidator.validate(topic):
@@ -411,8 +419,9 @@ class UPClientZenoh(UTransport, RpcClient):
             zenoh_key = zenoh_key_result
 
             # Create UAttributes and put into Zenoh user attachment
-            uattributes = UAttributesBuilder.request(self.get_response_uuri(), topic, UPriority.UPRIORITY_CS4,
-                                                     options.ttl).build()
+            uattributes = UAttributesBuilder.request(
+                self.get_response_uuri(), topic, UPriority.UPRIORITY_CS4, options.ttl
+            ).build()
 
             attachment = ZenohUtils.uattributes_to_attachment(uattributes)
 
@@ -426,11 +435,16 @@ class UPClientZenoh(UTransport, RpcClient):
             value = Value(buf, encoding=Encoding.APP_CUSTOM().with_suffix(str(payload.format)))
 
             # Send the query
-            get_builder = self.session.get(zenoh_key, zenoh.Queue(), target=zenoh.QueryTarget.BEST_MATCHING(), value=value,
-                                           attachment=attachment, timeout=options.ttl / 1000)
+            get_builder = self.session.get(
+                zenoh_key,
+                zenoh.Queue(),
+                target=zenoh.QueryTarget.BEST_MATCHING(),
+                value=value,
+                attachment=attachment,
+                timeout=options.ttl / 1000,
+            )
 
             for reply in get_builder.receiver:
-
                 if reply.is_ok:
                     encoding = ZenohUtils.to_upayload_format(reply.ok.encoding)
                     if not encoding:
@@ -438,7 +452,9 @@ class UPClientZenoh(UTransport, RpcClient):
                         logging.debug(f"{msg}")
                         raise UStatus(code=UCode.INTERNAL, message=msg)
 
-                    umessage = UMessage(attributes=uattributes, payload=UPayload(format=encoding, value=reply.ok.payload))
+                    umessage = UMessage(
+                        attributes=uattributes, payload=UPayload(format=encoding, value=reply.ok.payload)
+                    )
                     future = Future()
                     future.set_result(umessage)
                     return future

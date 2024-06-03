@@ -17,7 +17,7 @@ from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
 from uprotocol.proto.uri_pb2 import UUri
 
 from up_client_zenoh.examples import common_uuri
-from up_client_zenoh.examples.common_uuri import authority, entity, ExampleType, rpc_resource, get_zenoh_default_config
+from up_client_zenoh.examples.common_uuri import ExampleType, authority, entity, get_zenoh_default_config, rpc_resource
 from up_client_zenoh.upclientzenoh import UPClientZenoh
 
 rpc_client = UPClientZenoh(get_zenoh_default_config(), authority(), entity(ExampleType.RPC_CLIENT))

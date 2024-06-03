@@ -16,19 +16,18 @@ import time
 
 from uprotocol.proto.uattributes_pb2 import UPriority
 from uprotocol.proto.umessage_pb2 import UMessage
-from uprotocol.proto.upayload_pb2 import UPayloadFormat, UPayload
+from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
 from uprotocol.proto.uri_pb2 import UUri
 from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
 
 from up_client_zenoh.examples import common_uuri
-from up_client_zenoh.examples.common_uuri import authority, entity, ExampleType, pub_resource, \
-    get_zenoh_default_config
+from up_client_zenoh.examples.common_uuri import ExampleType, authority, entity, get_zenoh_default_config, pub_resource
 from up_client_zenoh.upclientzenoh import UPClientZenoh
 
 publisher = UPClientZenoh(get_zenoh_default_config(), authority(), entity(ExampleType.PUBLISHER))
 
 
-def publishtoZenoh():
+def publish_to_zenoh():
     # create uuri
     uuri = UUri(entity=entity(ExampleType.PUBLISHER), resource=pub_resource())
     cnt = 0
@@ -44,4 +43,4 @@ def publishtoZenoh():
 
 
 if __name__ == '__main__':
-    publishtoZenoh()
+    publish_to_zenoh()

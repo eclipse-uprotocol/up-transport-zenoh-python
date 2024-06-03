@@ -20,13 +20,11 @@ from uprotocol.proto.ustatus_pb2 import UStatus
 from uprotocol.transport.ulistener import UListener
 
 from up_client_zenoh.examples import common_uuri
-from up_client_zenoh.examples.common_uuri import authority, entity, ExampleType, pub_resource, \
-    get_zenoh_default_config
+from up_client_zenoh.examples.common_uuri import ExampleType, authority, entity, get_zenoh_default_config, pub_resource
 from up_client_zenoh.upclientzenoh import UPClientZenoh
 
 
 class MyListener(UListener):
-
     def on_receive(self, msg: UMessage) -> UStatus:
         common_uuri.logging.debug('on receive called')
         common_uuri.logging.debug(msg.payload.value)
@@ -37,13 +35,13 @@ class MyListener(UListener):
 client = UPClientZenoh(get_zenoh_default_config(), authority(), entity(ExampleType.SUBSCRIBER))
 
 
-def subscribeToZenoh():
+def subscribe_to_zenoh():
     # create uuri
     uuri = UUri(entity=entity(ExampleType.PUBLISHER), resource=pub_resource())
     client.register_listener(uuri, MyListener())
 
 
 if __name__ == '__main__':
-    subscribeToZenoh()
+    subscribe_to_zenoh()
     while True:
         time.sleep(1)
