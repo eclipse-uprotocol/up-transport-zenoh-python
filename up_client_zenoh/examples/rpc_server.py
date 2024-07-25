@@ -12,42 +12,49 @@ terms of the Apache License Version 2.0 which is available at
 SPDX-License-Identifier: Apache-2.0
 """
 
+import asyncio
 import time
 from datetime import datetime
 
-from uprotocol.proto.umessage_pb2 import UMessage
-from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
-from uprotocol.proto.uri_pb2 import UUri
-from uprotocol.proto.ustatus_pb2 import UStatus
-from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
-from uprotocol.transport.ulistener import UListener
+from uprotocol.communication.inmemoryrpcserver import InMemoryRpcServer
+from uprotocol.communication.requesthandler import RequestHandler
+from uprotocol.communication.upayload import UPayload
+from uprotocol.v1.uattributes_pb2 import (
+    UPayloadFormat,
+)
+from uprotocol.v1.umessage_pb2 import UMessage
+from uprotocol.v1.uri_pb2 import UUri
 
 from up_client_zenoh.examples import common_uuri
-from up_client_zenoh.examples.common_uuri import ExampleType, authority, entity, get_zenoh_default_config, rpc_resource
+from up_client_zenoh.examples.common_uuri import create_method_uri, get_zenoh_default_config
 from up_client_zenoh.upclientzenoh import UPClientZenoh
 
-rpc_server = UPClientZenoh(get_zenoh_default_config(), authority(), entity(ExampleType.RPC_SERVER))
+source = UUri(authority_name="vehicle1", ue_id=18)
+transport = UPClientZenoh.new(get_zenoh_default_config(), source)
 
 
-class RPCRequestListener(UListener):
-    def on_receive(self, msg: UMessage) -> UStatus:
+class MyRequestHandler(RequestHandler):
+    def handle_request(self, msg: UMessage) -> UPayload:
+        common_uuri.logging.debug("Request Received by Service Request Handler")
         attributes = msg.attributes
         payload = msg.payload
-        value = ''.join(chr(c) for c in payload.value)
         source = attributes.source
         sink = attributes.sink
-        common_uuri.logging.debug(f"Receive {value} from {source} to {sink}")
+        common_uuri.logging.debug(f"Receive {payload} from {source} to {sink}")
         response_payload = format(datetime.utcnow()).encode('utf-8')
-        payload = UPayload(value=response_payload, format=UPayloadFormat.UPAYLOAD_FORMAT_TEXT)
-        attributes = UAttributesBuilder.response(msg.attributes).build()
-        rpc_server.send(UMessage(attributes=attributes, payload=payload))
+        payload = UPayload(data=response_payload, format=UPayloadFormat.UPAYLOAD_FORMAT_TEXT)
+        return payload
 
 
-if __name__ == '__main__':
-    uuri = UUri(entity=entity(ExampleType.RPC_SERVER), resource=rpc_resource())
-
-    common_uuri.logging.debug("Register the listener...")
-    rpc_server.register_listener(uuri, RPCRequestListener())
+async def register_rpc():
+    uuri = create_method_uri()
+    rpc_server = InMemoryRpcServer(transport)
+    status = await rpc_server.register_request_handler(uuri, MyRequestHandler())
+    common_uuri.logging.debug(f"Request Handler Register status {status}")
 
     while True:
         time.sleep(1)
+
+
+if __name__ == '__main__':
+    asyncio.run(register_rpc())

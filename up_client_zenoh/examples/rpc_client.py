@@ -12,35 +12,35 @@ terms of the Apache License Version 2.0 which is available at
 SPDX-License-Identifier: Apache-2.0
 """
 
-from uprotocol.proto.uattributes_pb2 import CallOptions
-from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
-from uprotocol.proto.uri_pb2 import UUri
+import asyncio
+
+from uprotocol.communication.inmemoryrpcclient import InMemoryRpcClient
+from uprotocol.communication.upayload import UPayload
+from uprotocol.v1.uattributes_pb2 import (
+    UPayloadFormat,
+)
+from uprotocol.v1.uri_pb2 import UUri
 
 from up_client_zenoh.examples import common_uuri
-from up_client_zenoh.examples.common_uuri import ExampleType, authority, entity, get_zenoh_default_config, rpc_resource
+from up_client_zenoh.examples.common_uuri import create_method_uri, get_zenoh_default_config
 from up_client_zenoh.upclientzenoh import UPClientZenoh
 
-rpc_client = UPClientZenoh(get_zenoh_default_config(), authority(), entity(ExampleType.RPC_CLIENT))
+source = UUri(authority_name="vehicle1", ue_id=18)
+transport = UPClientZenoh.new(get_zenoh_default_config(), source)
 
 
-def send_rpc_request_to_zenoh():
+async def send_rpc_request_to_zenoh():
     # create uuri
-    uuri = UUri(entity=entity(ExampleType.RPC_SERVER), resource=rpc_resource())
+    uuri = create_method_uri()
     # create UPayload
     data = "GetCurrentTime"
-    payload = UPayload(length=0, format=UPayloadFormat.UPAYLOAD_FORMAT_TEXT, value=bytes([ord(c) for c in data]))
+    payload = UPayload(format=UPayloadFormat.UPAYLOAD_FORMAT_TEXT, data=bytes([ord(c) for c in data]))
     # invoke RPC method
-    common_uuri.logging.debug(f"Send request to {uuri.entity}/{uuri.resource}")
-    response_future = rpc_client.invoke_method(uuri, payload, CallOptions(ttl=1000))
-    # process the result
-    result = response_future.result()
-    if result and isinstance(result.payload.value, bytes):
-        data = list(result.payload.value)
-        value = ''.join(chr(c) for c in data)
-        common_uuri.logging.debug(f"Receive rpc response {value}")
-    else:
-        common_uuri.logging.debug("Failed to get result from invoke_method.")
+    common_uuri.logging.debug(f"Send request to {uuri}")
+    rpc_client = InMemoryRpcClient(transport)
+    response_future = await rpc_client.invoke_method(uuri, payload)
+    common_uuri.logging.debug(f"Response payload {response_future}")
 
 
 if __name__ == '__main__':
-    send_rpc_request_to_zenoh()
+    asyncio.run(send_rpc_request_to_zenoh())

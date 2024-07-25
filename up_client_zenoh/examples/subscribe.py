@@ -12,36 +12,40 @@ terms of the Apache License Version 2.0 which is available at
 SPDX-License-Identifier: Apache-2.0
 """
 
+import asyncio
 import time
 
-from uprotocol.proto.umessage_pb2 import UMessage
-from uprotocol.proto.uri_pb2 import UUri
-from uprotocol.proto.ustatus_pb2 import UStatus
 from uprotocol.transport.ulistener import UListener
+from uprotocol.v1.umessage_pb2 import UMessage
+from uprotocol.v1.uri_pb2 import UUri
+from uprotocol.v1.ustatus_pb2 import UStatus
 
 from up_client_zenoh.examples import common_uuri
-from up_client_zenoh.examples.common_uuri import ExampleType, authority, entity, get_zenoh_default_config, pub_resource
+from up_client_zenoh.examples.common_uuri import get_zenoh_default_config
 from up_client_zenoh.upclientzenoh import UPClientZenoh
 
 
 class MyListener(UListener):
-    def on_receive(self, msg: UMessage) -> UStatus:
+    async def on_receive(self, msg: UMessage) -> UStatus:
         common_uuri.logging.debug('on receive called')
-        common_uuri.logging.debug(msg.payload.value)
+        common_uuri.logging.debug(msg.payload)
         common_uuri.logging.debug(msg.attributes.__str__())
         return UStatus(message="Received event")
 
 
-client = UPClientZenoh(get_zenoh_default_config(), authority(), entity(ExampleType.SUBSCRIBER))
+source = UUri(authority_name="vehicle1", ue_id=18)
+client = UPClientZenoh.new(get_zenoh_default_config(), source)
 
 
-def subscribe_to_zenoh():
+async def subscribe_to_zenoh():
     # create uuri
-    uuri = UUri(entity=entity(ExampleType.PUBLISHER), resource=pub_resource())
-    client.register_listener(uuri, MyListener())
+    uuri = UUri(ue_id=4, ue_version_major=1, resource_id=0x8000)
+    status = await client.register_listener(uuri, MyListener())
+    common_uuri.logging.debug(f"Register Listener status  {status}")
+
+    while True:
+        time.sleep(1)
 
 
 if __name__ == '__main__':
-    subscribe_to_zenoh()
-    while True:
-        time.sleep(1)
+    asyncio.run(subscribe_to_zenoh())

@@ -1,2 +1,2 @@
-# uprotocol-ulink-zenoh-python
-Python uLink implementation for the Zenoh transport
+# up-transport-zenoh-python
+uProtocol transport implementation for Zenoh in Python

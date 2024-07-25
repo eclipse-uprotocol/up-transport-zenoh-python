@@ -12,35 +12,31 @@ terms of the Apache License Version 2.0 which is available at
 SPDX-License-Identifier: Apache-2.0
 """
 
+import asyncio
 import time
 
-from uprotocol.proto.uattributes_pb2 import UPriority
-from uprotocol.proto.umessage_pb2 import UMessage
-from uprotocol.proto.upayload_pb2 import UPayload, UPayloadFormat
-from uprotocol.proto.uri_pb2 import UUri
-from uprotocol.transport.builder.uattributesbuilder import UAttributesBuilder
+from uprotocol.communication.upayload import UPayload
+from uprotocol.transport.builder.umessagebuilder import UMessageBuilder
+from uprotocol.v1.uri_pb2 import UUri
 
 from up_client_zenoh.examples import common_uuri
-from up_client_zenoh.examples.common_uuri import ExampleType, authority, entity, get_zenoh_default_config, pub_resource
+from up_client_zenoh.examples.common_uuri import get_zenoh_default_config
 from up_client_zenoh.upclientzenoh import UPClientZenoh
 
-publisher = UPClientZenoh(get_zenoh_default_config(), authority(), entity(ExampleType.PUBLISHER))
+source = UUri(authority_name="vehicle1", ue_id=18)
+publisher = UPClientZenoh.new(get_zenoh_default_config(), source)
 
 
-def publish_to_zenoh():
+async def publish_to_zenoh():
     # create uuri
-    uuri = UUri(entity=entity(ExampleType.PUBLISHER), resource=pub_resource())
-    cnt = 0
-    while True:
-        data = f"{cnt}"
-        attributes = UAttributesBuilder.publish(uuri, UPriority.UPRIORITY_CS4).build()
-        payload = UPayload(value=data.encode('utf-8'), format=UPayloadFormat.UPAYLOAD_FORMAT_TEXT)
-        umessage = UMessage(attributes=attributes, payload=payload)
-        common_uuri.logging.debug(f"Sending {data} to {uuri}...")
-        publisher.send(umessage)
-        time.sleep(3)
-        cnt += 1
+    uuri = UUri(ue_id=4, ue_version_major=1, resource_id=0x8000)
+    builder = UMessageBuilder.publish(uuri)
+    payload = UPayload.pack(UUri())
+    umessage = builder.build_from_upayload(payload)
+    status = await publisher.send(umessage)
+    common_uuri.logging.debug(f"Publish status {status}")
+    time.sleep(3)
 
 
 if __name__ == '__main__':
-    publish_to_zenoh()
+    asyncio.run(publish_to_zenoh())
