@@ -19,12 +19,12 @@ from uprotocol.communication.upayload import UPayload
 from uprotocol.transport.builder.umessagebuilder import UMessageBuilder
 from uprotocol.v1.uri_pb2 import UUri
 
-from up_client_zenoh.examples import common_uuri
-from up_client_zenoh.examples.common_uuri import get_zenoh_default_config
-from up_client_zenoh.upclientzenoh import UPClientZenoh
+from up_transport_zenoh.examples import common_uuri
+from up_transport_zenoh.examples.common_uuri import get_zenoh_default_config
+from up_transport_zenoh.uptransportzenoh import UPTransportZenoh
 
 source = UUri(authority_name="vehicle1", ue_id=18)
-publisher = UPClientZenoh.new(get_zenoh_default_config(), source)
+publisher = UPTransportZenoh.new(get_zenoh_default_config(), source)
 
 
 async def publish_to_zenoh():

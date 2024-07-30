@@ -17,6 +17,7 @@ from enum import IntFlag
 from typing import Union
 
 from uprotocol.communication.ustatuserror import UStatusError
+from uprotocol.uri.factory.uri_factory import UriFactory
 from uprotocol.v1.uattributes_pb2 import (
     UAttributes,
     UPayloadFormat,
@@ -27,8 +28,6 @@ from uprotocol.v1.uri_pb2 import UUri
 from uprotocol.v1.ustatus_pb2 import UStatus
 from zenoh import Encoding, Priority
 from zenoh.value import Attachment
-
-from up_client_zenoh.constants import WildcardConstants
 
 UATTRIBUTE_VERSION: int = 1
 
@@ -47,11 +46,11 @@ class ZenohUtils:
     @staticmethod
     def uri_to_zenoh_key(authority_name: str, uri: UUri) -> str:
         authority = authority_name if not uri.authority_name else uri.authority_name
-        ue_id = "*" if uri.ue_id == WildcardConstants.WILDCARD_ENTITY_ID else f"{uri.ue_id:X}"
+        ue_id = "*" if uri.ue_id == UriFactory.WILDCARD_ENTITY_ID else f"{uri.ue_id:X}"
         ue_version_major = (
-            "*" if uri.ue_version_major == WildcardConstants.WILDCARD_ENTITY_VERSION else f"{uri.ue_version_major:X}"
+            "*" if uri.ue_version_major == UriFactory.WILDCARD_ENTITY_VERSION else f"{uri.ue_version_major:X}"
         )
-        resource_id = "*" if uri.resource_id == WildcardConstants.WILDCARD_RESOURCE_ID else f"{uri.resource_id:X}"
+        resource_id = "*" if uri.resource_id == UriFactory.WILDCARD_RESOURCE_ID else f"{uri.resource_id:X}"
         return f"{authority}/{ue_id}/{ue_version_major}/{resource_id}"
 
     @staticmethod
@@ -148,7 +147,7 @@ class ZenohUtils:
             raise UStatusError.from_code_message(code=UCode.INVALID_ARGUMENT, message=msg)
 
     @staticmethod
-    def get_listener_message_type(source_uuri: UUri, sink_uuri: UUri = None) -> Union[MessageFlag, Exception]:
+    def get_listener_message_type(source_uuri: UUri, sink_uuri: UUri = None) -> Union[MessageFlag, UStatusError]:
         """
         The table for mapping resource ID to message type:
 
@@ -176,10 +175,11 @@ class ZenohUtils:
         :return: MessageFlag indicating the type of message.
         :raises Exception: If the combination of source UUri and sink UUri is invalid.
         """
-        flag = 0
+        flag = MessageFlag(0)
 
         rpc_range = range(1, 0x7FFF)
         nonrpc_range = range(0x8000, 0xFFFE)
+        wildcard_resource_id = UriFactory.WILDCARD_RESOURCE_ID
 
         src_resource = source_uuri.resource_id
 
@@ -189,34 +189,41 @@ class ZenohUtils:
 
             if (
                 (src_resource in nonrpc_range and dst_resource == 0)
-                or (src_resource in nonrpc_range and dst_resource == 0xFFFF)
-                or (src_resource == 0xFFFF and dst_resource == 0)
-                or (src_resource == 0xFFFF and dst_resource == 0xFFFF)
+                or (src_resource in nonrpc_range and dst_resource == wildcard_resource_id)
+                or (src_resource == wildcard_resource_id and dst_resource == 0)
+                or (src_resource == wildcard_resource_id and dst_resource == wildcard_resource_id)
             ):
                 flag |= MessageFlag.NOTIFICATION
 
             if (
                 (src_resource == 0 and dst_resource in rpc_range)
-                or (src_resource == 0 and dst_resource == 0xFFFF)
-                or (src_resource == 0xFFFF and dst_resource in rpc_range)
-                or (src_resource == 0xFFFF and dst_resource == 0xFFFF)
+                or (src_resource == 0 and dst_resource == wildcard_resource_id)
+                or (src_resource == wildcard_resource_id and dst_resource in rpc_range)
+                or (src_resource == wildcard_resource_id and dst_resource == wildcard_resource_id)
             ):
                 flag |= MessageFlag.REQUEST
 
             if (
                 (src_resource in rpc_range and dst_resource == 0)
-                or (src_resource in rpc_range and dst_resource == 0xFFFF)
-                or (src_resource == 0xFFFF and dst_resource == 0)
-                or (src_resource == 0xFFFF and dst_resource == 0xFFFF)
+                or (src_resource in rpc_range and dst_resource == wildcard_resource_id)
+                or (src_resource == wildcard_resource_id and dst_resource == 0)
+                or (src_resource == wildcard_resource_id and dst_resource == wildcard_resource_id)
             ):
                 flag |= MessageFlag.RESPONSE
 
+            if dst_resource == wildcard_resource_id and (
+                src_resource in nonrpc_range or src_resource == wildcard_resource_id
+            ):
+                flag |= MessageFlag.PUBLISH
+
         # Publish
-        elif src_resource in nonrpc_range or src_resource == 0xFFFF:
+        elif src_resource in nonrpc_range or src_resource == wildcard_resource_id:
             flag |= MessageFlag.PUBLISH
 
         # Error handling
-        if flag == 0:
-            raise Exception("Wrong combination of source UUri and sink UUri")
+        if flag == MessageFlag(0):
+            raise UStatusError.from_code_message(
+                code=UCode.INTERNAL, message="Wrong combination of source UUri and sink " "UUri"
+            )
         else:
             return flag

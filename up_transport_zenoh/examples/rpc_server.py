@@ -25,12 +25,12 @@ from uprotocol.v1.uattributes_pb2 import (
 from uprotocol.v1.umessage_pb2 import UMessage
 from uprotocol.v1.uri_pb2 import UUri
 
-from up_client_zenoh.examples import common_uuri
-from up_client_zenoh.examples.common_uuri import create_method_uri, get_zenoh_default_config
-from up_client_zenoh.upclientzenoh import UPClientZenoh
+from up_transport_zenoh.examples import common_uuri
+from up_transport_zenoh.examples.common_uuri import create_method_uri, get_zenoh_default_config
+from up_transport_zenoh.uptransportzenoh import UPTransportZenoh
 
 source = UUri(authority_name="vehicle1", ue_id=18)
-transport = UPClientZenoh.new(get_zenoh_default_config(), source)
+transport = UPTransportZenoh.new(get_zenoh_default_config(), source)
 
 
 class MyRequestHandler(RequestHandler):

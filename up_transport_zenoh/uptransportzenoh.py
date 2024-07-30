@@ -32,22 +32,18 @@ from uprotocol.v1.ustatus_pb2 import UStatus
 from zenoh import Config, Query, Queryable, Sample, Session, Subscriber, Value
 from zenoh.keyexpr import KeyExpr
 
-from up_client_zenoh.zenohutils import MessageFlag, ZenohUtils
+from up_transport_zenoh.zenohutils import MessageFlag, ZenohUtils
 
 # Configure the logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-class UPClientZenoh(UTransport):
+class UPTransportZenoh(UTransport):
     def get_source(self) -> UUri:
         return self.source
 
     def close(self) -> None:
         pass
-
-    WILDCARD_ENTITY_ID = 0x0000_FFFF
-    WILDCARD_ENTITY_VERSION = 0x0000_00FF
-    WILDCARD_RESOURCE_ID = 0x0000_FFFF
 
     def __init__(self, session: Session, source: UUri):
         self.session = session

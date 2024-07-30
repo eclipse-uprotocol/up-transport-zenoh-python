@@ -17,7 +17,7 @@ import unittest
 import pytest
 from uprotocol.uri.serializer.uriserializer import UriSerializer
 
-from up_client_zenoh.zenohutils import MessageFlag, ZenohUtils
+from up_transport_zenoh.zenohutils import MessageFlag, ZenohUtils
 
 
 class TestZenohUtils(unittest.IsolatedAsyncioTestCase):
@@ -59,7 +59,7 @@ class TestZenohUtils(unittest.IsolatedAsyncioTestCase):
             ("//*/FFFF/FF/FFFF", "//192.168.1.101/20EF/4/B", MessageFlag.REQUEST),
             ("//192.168.1.100/10AB/3/0", "//*/FFFF/FF/FFFF", MessageFlag.REQUEST),
             ("//192.168.1.101/20EF/4/B", "//*/FFFF/FF/FFFF", MessageFlag.RESPONSE),
-            ("//192.168.1.100/10AB/3/80CD", "//*/FFFF/FF/FFFF", MessageFlag.NOTIFICATION),
+            ("//192.168.1.100/10AB/3/80CD", "//*/FFFF/FF/FFFF", MessageFlag.NOTIFICATION | MessageFlag.PUBLISH),
         ]
 
         for src_uri, sink_uri, expected_result in test_cases:
