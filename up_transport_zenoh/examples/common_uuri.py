@@ -17,8 +17,7 @@ import logging
 from enum import Enum
 
 import zenoh
-from uprotocol.proto.uri_pb2 import UAuthority, UEntity, UResource
-from uprotocol.uri.factory.uresource_builder import UResourceBuilder
+from uprotocol.v1.uri_pb2 import UUri
 
 # Configure the logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -31,32 +30,13 @@ class ExampleType(Enum):
     RPC_CLIENT = "rpc_client"
 
 
-def authority() -> UAuthority:
-    return UAuthority(name="auth_name", id=bytes([1, 2, 3, 4]))
-
-
-def entity(example_type: ExampleType) -> UEntity:
-    mapping = {
-        ExampleType.PUBLISHER: ("publisher", 1),
-        ExampleType.SUBSCRIBER: ("subscriber", 2),
-        ExampleType.RPC_SERVER: ("rpc_server", 3),
-        ExampleType.RPC_CLIENT: ("rpc_client", 4),
-    }
-    name, id = mapping[example_type]
-    return UEntity(name=name, id=1, version_major=id)
-
-
-def pub_resource() -> UResource:
-    return UResource(name="door", instance="front_left", message="Door", id=5678)
-
-
-def rpc_resource() -> UResource:
-    return UResourceBuilder.for_rpc_request("getTime", 5678)
+def create_method_uri():
+    return UUri(authority_name="Neelam", ue_id=4, ue_version_major=1, resource_id=3)
 
 
 def get_zenoh_config():
     # start your zenoh router and provide router ip and port
-    zenoh_ip = "192.168.29.79"  # zenoh router ip
+    zenoh_ip = "10.0.3.3"  # zenoh router ip
     zenoh_port = 9090  # zenoh router port
     conf = zenoh.Config()
     if zenoh_ip is not None:

@@ -23,7 +23,7 @@ import os
 
 from setuptools import find_packages, setup
 
-project_name = "up-client-zenoh-python"
+project_name = "up-transport-zenoh-python"
 
 script_directory = os.path.realpath(os.path.dirname(__file__))
 REQUIREMENTS = [i.strip() for i in open(os.path.join("requirements.txt")).readlines()]
@@ -32,11 +32,11 @@ setup(
     name=project_name,
     author="Neelam Kushwah",
     author_email="neelam.kushwah@gm.com",
-    version="0.1.0-dev",
+    version="0.2.0-dev",
     python_requires=">=3.8",
     packages=find_packages(),
     package_data={
-        'up_client_zenoh': ['**'],
+        'up_transport_zenoh': ['**'],
     },
     include_package_data=True,
     install_requires=REQUIREMENTS,
