@@ -340,17 +340,17 @@ class UPTransportZenoh(UTransport):
         # Publish & Notification
         if flag & (MessageFlag.PUBLISH | MessageFlag.NOTIFICATION):
             # Get Zenoh key
-            zenoh_key = ZenohUtils.to_zenoh_key_string(source_filter, sink_filter)
+            zenoh_key = ZenohUtils.to_zenoh_key_string(self.authority_name, source_filter, sink_filter)
             return self._remove_publish_listener(zenoh_key, listener)
         # RPC request
         if flag & MessageFlag.REQUEST:
             # Get Zenoh key
-            zenoh_key = ZenohUtils.to_zenoh_key_string(source_filter, sink_filter)
+            zenoh_key = ZenohUtils.to_zenoh_key_string(self.authority_name, source_filter, sink_filter)
             return self._remove_request_listener(zenoh_key, listener)  # RPC response
         if flag & MessageFlag.RESPONSE:
             if sink_filter is not None:
                 # Get Zenoh key
-                zenoh_key = ZenohUtils.to_zenoh_key_string(sink_filter, source_filter)
+                zenoh_key = ZenohUtils.to_zenoh_key_string(self.authority_name, sink_filter, source_filter)
                 return self._remove_response_listener(zenoh_key)
             else:
                 return UStatus(code=UCode.INVALID_ARGUMENT, message="Sink should not be None in Response")
@@ -358,7 +358,7 @@ class UPTransportZenoh(UTransport):
     def _remove_response_listener(self, zenoh_key: str) -> UStatus:
         with self.rpc_callback_lock:
             if self.rpc_callback_map.pop(zenoh_key, None) is None:
-                msg = "RPC response callback doesn't exist"
+                msg = f"RPC response callback doesn't exist for : {zenoh_key}"
                 logging.error(msg)
                 return UStatus(code=UCode.NOT_FOUND, message=msg)
         return UStatus(code=UCode.OK)
@@ -366,7 +366,7 @@ class UPTransportZenoh(UTransport):
     def _remove_publish_listener(self, zenoh_key: str, listener: UListener) -> UStatus:
         with self.subscriber_lock:
             if self.subscriber_map.pop((zenoh_key, listener), None) is None:
-                msg = "Listener not registered for filters: {source_filter}, {sink_filter}"
+                msg = f"Listener not registered for : {zenoh_key}"
                 logging.error(msg)
                 return UStatus(code=UCode.NOT_FOUND, message=msg)
 
@@ -375,7 +375,7 @@ class UPTransportZenoh(UTransport):
     def _remove_request_listener(self, zenoh_key: str, listener: UListener) -> UStatus:
         with self.queryable_lock:
             if self.queryable_map.pop((zenoh_key, listener), None) is None:
-                msg = "RPC request listener doesn't exist"
+                msg = f"RPC request listener doesn't exist for : {zenoh_key}"
                 logging.error(msg)
                 return UStatus(code=UCode.NOT_FOUND, message=msg)
         return UStatus(code=UCode.OK, message="Listener removed successfully")
