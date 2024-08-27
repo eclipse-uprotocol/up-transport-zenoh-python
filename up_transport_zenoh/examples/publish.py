@@ -23,14 +23,14 @@ from up_transport_zenoh.examples import common_uuri
 from up_transport_zenoh.examples.common_uuri import get_zenoh_default_config
 from up_transport_zenoh.uptransportzenoh import UPTransportZenoh
 
-source = UUri(authority_name="vehicle1", ue_id=18)
+source = UUri(authority_name="publisher", ue_id=1, ue_version_major=1)
 publisher = UPTransportZenoh.new(get_zenoh_default_config(), source)
 
 
 async def publish_to_zenoh():
     # create uuri
-    uuri = UUri(ue_id=4, ue_version_major=1, resource_id=0x8000)
-    builder = UMessageBuilder.publish(uuri)
+    source.resource_id = 0x8001
+    builder = UMessageBuilder.publish(source)
     payload = UPayload.pack(UUri())
     umessage = builder.build_from_upayload(payload)
     status = await publisher.send(umessage)

@@ -29,8 +29,8 @@ from uprotocol.v1.ucode_pb2 import UCode
 from uprotocol.v1.umessage_pb2 import UMessage
 from uprotocol.v1.uri_pb2 import UUri
 from uprotocol.v1.ustatus_pb2 import UStatus
-from zenoh import Config, Query, Queryable, Sample, Session, Subscriber, Value
-from zenoh.keyexpr import KeyExpr
+from zenoh import Config, Query, Queryable, Sample, Session, Subscriber
+from zenoh.zenoh import KeyExpr
 
 from up_transport_zenoh.zenohutils import MessageFlag, ZenohUtils
 
@@ -93,7 +93,7 @@ class UPTransportZenoh(UTransport):
             logging.debug(f"Priority: {priority}")
             logging.debug(f"Attachment: {attachment}")
 
-            self.session.put(keyexpr=zenoh_key, value=payload, attachment=attachment, priority=priority)
+            self.session.put(key_expr=zenoh_key, payload=payload, attachment=attachment, priority=priority)
             msg = "Successfully sent data to Zenoh"
             logging.debug(f"SUCCESS:{msg}")
             return UStatus(code=UCode.OK, message=msg)
@@ -111,8 +111,8 @@ class UPTransportZenoh(UTransport):
             return UStatus(code=UCode.INVALID_ARGUMENT, message=msg)
         resp_callback = None
         for saved_zenoh_key, listener in self.rpc_callback_map.items():
-            keyexpr_zenohkey = KeyExpr.new(zenoh_key)
-            keyexpr_savedkey = KeyExpr.new(saved_zenoh_key)
+            keyexpr_zenohkey = KeyExpr(zenoh_key)
+            keyexpr_savedkey = KeyExpr(saved_zenoh_key)
 
             if keyexpr_zenohkey.intersects(keyexpr_savedkey):
                 resp_callback = self.rpc_callback_map.get(saved_zenoh_key)
@@ -138,7 +138,7 @@ class UPTransportZenoh(UTransport):
                     logging.debug(msg)
                     return UStatus(code=UCode.INTERNAL, message=msg)
                 # Create UMessage
-                msg = UMessage(attributes=u_attribute, payload=sample.payload)
+                msg = UMessage(attributes=u_attribute, payload=bytes(sample.payload))
                 asyncio.run(resp_callback.on_receive(msg))
             except Exception:
                 msg = f"Error while parsing Zenoh reply: {reply.error}"
@@ -148,21 +148,19 @@ class UPTransportZenoh(UTransport):
         # Send query
         ttl = attributes.ttl / 1000 if attributes.ttl is not None else 1000
 
-        value = Value(payload)
         # Send the query
-        get_builder = self.session.get(
-            zenoh_key,
-            zenoh.Queue(),
-            target=zenoh.QueryTarget.BEST_MATCHING(),
+        replies = self.session.get(
+            selector=zenoh_key,
+            target=zenoh.QueryTarget.BEST_MATCHING,
             attachment=attachment,
-            value=value,
+            payload=payload,
             timeout=ttl,
         )
 
         def get_response():
             try:
-                for reply in get_builder.receiver:
-                    if reply.is_ok:
+                for reply in replies:
+                    if reply.ok:
                         handle_response(reply)
                         break
             except Exception:
@@ -192,11 +190,9 @@ class UPTransportZenoh(UTransport):
             msg = "Query doesn't exist"
             logging.debug(msg)
             return UStatus(code=UCode.INTERNAL, message=msg)  # Send back the query
-        value = Value(payload)
-        reply = Sample(query.key_expr, value, attachment=attachment)
 
         try:
-            query.reply(reply)
+            query.reply(query.key_expr, payload, attachment=attachment)
             msg = "Successfully sent rpc response to Zenoh"
             logging.debug(f"SUCCESS:{msg}")
             return UStatus(code=UCode.OK, message=msg)
@@ -223,7 +219,7 @@ class UPTransportZenoh(UTransport):
                 msg = "Unable to decode attributes"
                 logging.debug(msg)
                 return UStatus(code=UCode.INTERNAL, message=msg)
-            message = UMessage(attributes=u_attribute, payload=sample.payload)
+            message = UMessage(attributes=u_attribute, payload=bytes(sample.payload))
             asyncio.run(listener.on_receive(message))
 
         # Create Zenoh subscriber
@@ -260,7 +256,7 @@ class UPTransportZenoh(UTransport):
                 logging.debug(msg)
                 return UStatus(code=UCode.INTERNAL, message=msg)
 
-            message = UMessage(attributes=u_attribute, payload=query.value.payload if query.value else None)
+            message = UMessage(attributes=u_attribute, payload=bytes(query.payload) if query.payload else None)
             self.query_map[u_attribute.id.SerializeToString()] = query
             asyncio.run(listener.on_receive(message))
 
@@ -286,7 +282,6 @@ class UPTransportZenoh(UTransport):
         source = attributes.source
         sink = attributes.sink
         zenoh_key = ZenohUtils.to_zenoh_key_string(self.authority_name, source, sink)
-
         if not source:
             return UStatus(code=UCode.INVALID_ARGUMENT, message="attributes.source shouldn't be empty")
         payload = message.payload or b''

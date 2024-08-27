@@ -33,10 +33,10 @@ class MyListener(UListener):
         return UStatus(message="Received event")
 
 
-source = UUri(authority_name="vehicle1", ue_id=18)
+source = UUri(authority_name="subscriber", ue_id=9)
 transport = UPTransportZenoh.new(get_zenoh_default_config(), source)
 # create topic uuri
-uuri = UUri(ue_id=4, ue_version_major=1, resource_id=0x8000)
+uuri = UUri(authority_name="publisher", ue_id=1, ue_version_major=1, resource_id=0x8001)
 
 
 async def subscribe_to_zenoh_if_subscription_service_is_not_running():
