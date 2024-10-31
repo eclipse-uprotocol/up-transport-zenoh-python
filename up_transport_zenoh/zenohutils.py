@@ -96,16 +96,16 @@ class ZenohUtils:
         uattributes_bytes = uattributes.SerializeToString()
 
         # Combine version bytes and uattributes bytes into one list of bytes
-        attachment_bytes = version_bytes + uattributes_bytes
+        attachment_bytes = [version_bytes, uattributes_bytes]
 
         # Convert the combined bytes to ZBytes
-        return ZBytes(attachment_bytes)
+        return attachment_bytes
 
     @staticmethod
     def attachment_to_uattributes(attachment: ZBytes) -> UAttributes:
         try:
             # Convert ZBytes to a list of bytes
-            attachment_bytes = bytes(attachment)
+            attachment_bytes = attachment.deserialize(list)
 
             # Ensure there is at least one byte for the version
             if len(attachment_bytes) < 1:
@@ -114,14 +114,14 @@ class ZenohUtils:
                 raise UStatusError.from_code_message(code=UCode.INVALID_ARGUMENT, message=msg)
 
             # Check the version
-            version = attachment_bytes[0]
+            version = int.from_bytes(bytes(attachment_bytes[0]), byteorder='big')
             if version != UATTRIBUTE_VERSION:
                 msg = f"UAttributes version is {version} (should be {UATTRIBUTE_VERSION})"
                 logging.debug(msg)
                 raise UStatusError.from_code_message(code=UCode.INVALID_ARGUMENT, message=msg)
 
             # Get the attributes from the remaining bytes
-            uattributes_data = attachment_bytes[1:]
+            uattributes_data = bytes(attachment_bytes[1])
             if not uattributes_data:
                 msg = "Unable to get the UAttributes"
                 logging.debug(msg)
