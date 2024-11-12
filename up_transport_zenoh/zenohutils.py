@@ -20,14 +20,12 @@ from uprotocol.communication.ustatuserror import UStatusError
 from uprotocol.uri.factory.uri_factory import UriFactory
 from uprotocol.v1.uattributes_pb2 import (
     UAttributes,
-    UPayloadFormat,
     UPriority,
 )
 from uprotocol.v1.ucode_pb2 import UCode
 from uprotocol.v1.uri_pb2 import UUri
 from uprotocol.v1.ustatus_pb2 import UStatus
-from zenoh import Encoding, Priority
-from zenoh.value import Attachment
+from zenoh import Priority, ZBytes
 
 UATTRIBUTE_VERSION: int = 1
 
@@ -72,77 +70,71 @@ class ZenohUtils:
     @staticmethod
     def to_zenoh_key_string(authority_name: str, src_uri: UUri, dst_uri: UUri = None) -> str:
         src = ZenohUtils.uri_to_zenoh_key(authority_name, src_uri)
-        dst = ZenohUtils.uri_to_zenoh_key(authority_name, dst_uri) if dst_uri else "{}/{}/{}/{}"
+        dst = ZenohUtils.uri_to_zenoh_key(authority_name, dst_uri) if dst_uri and dst_uri != UUri() else "{}/{}/{}/{}"
         return f"up/{src}/{dst}"
 
     @staticmethod
     def map_zenoh_priority(upriority: UPriority) -> Priority:
         mapping = {
-            UPriority.UPRIORITY_CS0: Priority.BACKGROUND(),
-            UPriority.UPRIORITY_CS1: Priority.DATA_LOW(),
-            UPriority.UPRIORITY_CS2: Priority.DATA(),
-            UPriority.UPRIORITY_CS3: Priority.DATA_HIGH(),
-            UPriority.UPRIORITY_CS4: Priority.INTERACTIVE_LOW(),
-            UPriority.UPRIORITY_CS5: Priority.INTERACTIVE_HIGH(),
-            UPriority.UPRIORITY_CS6: Priority.REAL_TIME(),
-            UPriority.UPRIORITY_UNSPECIFIED: Priority.DATA_LOW(),
+            UPriority.UPRIORITY_CS0: Priority.BACKGROUND,
+            UPriority.UPRIORITY_CS1: Priority.DATA_LOW,
+            UPriority.UPRIORITY_CS2: Priority.DATA,
+            UPriority.UPRIORITY_CS3: Priority.DATA_HIGH,
+            UPriority.UPRIORITY_CS4: Priority.INTERACTIVE_LOW,
+            UPriority.UPRIORITY_CS5: Priority.INTERACTIVE_HIGH,
+            UPriority.UPRIORITY_CS6: Priority.REAL_TIME,
+            UPriority.UPRIORITY_UNSPECIFIED: Priority.DATA_LOW,
         }
         return mapping[upriority]
 
     @staticmethod
-    def to_upayload_format(encoding: Encoding) -> UPayloadFormat:
-        try:
-            value = int(encoding.suffix)
-            return value if UPayloadFormat.Name(value) else None
-        except (ValueError, AttributeError):
-            return None
-
-    @staticmethod
     def uattributes_to_attachment(uattributes: UAttributes):
-        attachment = [("", UATTRIBUTE_VERSION.to_bytes(1, byteorder='little')), ("", uattributes.SerializeToString())]
-        return attachment
+        # Convert the version number to bytes (assuming 1 as in the Rust example)
+        version_bytes = UATTRIBUTE_VERSION.to_bytes(1, byteorder='little')
+
+        # Serialize the UAttributes to bytes
+        uattributes_bytes = uattributes.SerializeToString()
+
+        # Combine version bytes and uattributes bytes into one list of bytes
+        attachment_bytes = [version_bytes, uattributes_bytes]
+
+        # Convert the combined bytes to ZBytes
+        return attachment_bytes
 
     @staticmethod
-    def attachment_to_uattributes(attachment: Attachment) -> UAttributes:
+    def attachment_to_uattributes(attachment: ZBytes) -> UAttributes:
         try:
-            version = None
-            version_found = False
-            uattributes = None
+            # Convert ZBytes to a list of bytes
+            attachment_bytes = attachment.deserialize(list)
 
-            items = attachment.items()
-            for pair in items:
-                if not version_found:
-                    version = pair[1]
-                    version_found = True
-                else:
-                    # Process UAttributes data
-                    uattributes = UAttributes()
-                    uattributes.ParseFromString(pair[1])
-                    break
-
-            if version is None:
-                msg = f"UAttributes version is empty (should be {UATTRIBUTE_VERSION})"
+            # Ensure there is at least one byte for the version
+            if len(attachment_bytes) < 1:
+                msg = "Unable to get the UAttributes version"
                 logging.debug(msg)
                 raise UStatusError.from_code_message(code=UCode.INVALID_ARGUMENT, message=msg)
 
-            if not version_found:
-                msg = "UAttributes version is missing in the attachment"
-                logging.debug(msg)
-                raise UStatusError.from_code_message(code=UCode.INVALID_ARGUMENT, message=msg)
-
-            if version != UATTRIBUTE_VERSION.to_bytes(1, byteorder='little'):
+            # Check the version
+            version = int.from_bytes(bytes(attachment_bytes[0]), byteorder='big')
+            if version != UATTRIBUTE_VERSION:
                 msg = f"UAttributes version is {version} (should be {UATTRIBUTE_VERSION})"
                 logging.debug(msg)
                 raise UStatusError.from_code_message(code=UCode.INVALID_ARGUMENT, message=msg)
 
-            if uattributes is None:
+            # Get the attributes from the remaining bytes
+            uattributes_data = bytes(attachment_bytes[1])
+            if not uattributes_data:
                 msg = "Unable to get the UAttributes"
                 logging.debug(msg)
                 raise UStatusError.from_code_message(code=UCode.INVALID_ARGUMENT, message=msg)
 
+            # Parse the UAttributes from the bytes
+            uattributes = UAttributes()
+            uattributes.ParseFromString(uattributes_data)
+
             return uattributes
+
         except Exception as e:
-            msg = f"Failed to convert Attachment to UAttributes: {e}"
+            msg = f"Failed to convert Attachment to UAttributes: {str(e)}"
             logging.debug(msg)
             raise UStatusError.from_code_message(code=UCode.INVALID_ARGUMENT, message=msg)
 
