@@ -326,6 +326,7 @@ class UPTransportZenoh(UTransport):
         if flag & (MessageFlag.PUBLISH | MessageFlag.NOTIFICATION):
             # Get Zenoh key
             zenoh_key = ZenohUtils.to_zenoh_key_string(self.authority_name, source_filter, sink_filter)
+            logging.debug(f"Using zenoh key: {zenoh_key}")
             return self.register_publish_notification_listener(zenoh_key, listener)
 
     async def unregister_listener(
